@@ -79,9 +79,9 @@
   <canvas id="wheelCanvas" width="400" height="400"></canvas>
   <div id="status">Status: Idle</div>
 
-<script src="http://localhost:3000/socket.io/socket.io.js"></script>
+<script src="https://betsocket.onrender.com/socket.io/socket.io.js"></script>
 <script>
-const socket = io("http://localhost:3000");
+const socket = io("https://betsocket.onrender.com");
 const canvas = document.getElementById("wheelCanvas");
 const ctx = canvas.getContext("2d");
 const center = canvas.width / 2;
