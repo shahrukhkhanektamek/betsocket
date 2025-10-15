@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>🎡 Smart Wheel</title>
+<style>
+  body {
+    font-family: 'Arial', sans-serif;
+    background: #1a1a1a;
+    color: #fff;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin: 0;
+    padding: 30px;
+  }
+
+  h1 {
+    margin-bottom: 20px;
+    color: #ffd700;
+    text-shadow: 1px 1px 4px #000;
+  }
+
+  #controls {
+    margin-bottom: 20px;
+    display: flex;
+    gap: 10px;
+  }
+
+  input[type=number] {
+    padding: 8px 12px;
+    font-size: 16px;
+    border-radius: 5px;
+    border: none;
+    width: 120px;
+  }
+
+  button {
+    padding: 8px 20px;
+    font-size: 16px;
+    background: #e67e22;
+    color: #fff;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: 0.3s;
+  }
+
+  button:hover {
+    background: #f1c40f;
+    color: #000;
+  }
+
+  canvas {
+    margin-top: 20px;
+    border-radius: 50%;
+    box-shadow: 0 0 20px rgba(0,0,0,0.7);
+    background: radial-gradient(circle at center, #fff 5%, #333 90%);
+  }
+
+  #status {
+    margin-top: 20px;
+    font-size: 20px;
+    font-weight: bold;
+    color: #00ff99;
+    text-shadow: 1px 1px 2px #000;
+  }
+
+</style>
+</head>
+<body>
+  <h1>🎡 Smart Wheel</h1>
+  <div id="controls">
+    <input type="number" id="stopNumber" placeholder="0-9" min="0" max="9">
+    <button onclick="startWheel()">Start</button>
+    <button onclick="stopWheel()">Stop</button>
+  </div>
+
+  <canvas id="wheelCanvas" width="400" height="400"></canvas>
+  <div id="status">Status: Idle</div>
+
+<script src="http://localhost:3000/socket.io/socket.io.js"></script>
+<script>
+const socket = io("http://localhost:3000");
+const canvas = document.getElementById("wheelCanvas");
+const ctx = canvas.getContext("2d");
+const center = canvas.width / 2;
+const numbers = [0,1,2,3,4,5,6,7,8,9];
+let currentAngle = 0;
+let spinning = false;
+let targetNumber = null;
+
+// Draw wheel with numbers
+function drawWheel() {
+  const slice = (2 * Math.PI) / numbers.length;
+
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  for (let i=0; i<numbers.length; i++) {
+    const startAngle = i*slice + currentAngle;
+    const endAngle = (i+1)*slice + currentAngle;
+
+    const gradient = ctx.createRadialGradient(center, center, 0, center, center, center);
+    gradient.addColorStop(0, i%2===0 ? "#f39c12" : "#e67e22");
+    gradient.addColorStop(1, i%2===0 ? "#d35400" : "#c0392b");
+    ctx.fillStyle = gradient;
+
+    ctx.beginPath();
+    ctx.moveTo(center, center);
+    ctx.arc(center, center, center, startAngle, endAngle);
+    ctx.fill();
+
+    // Number
+    ctx.save();
+    ctx.translate(center, center);
+    ctx.rotate(startAngle + slice/2);
+    ctx.fillStyle = "#fff";
+    ctx.font = "24px Arial";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(numbers[i], center * 0.6, 0);
+    ctx.restore();
+  }
+
+  // Center circle
+  ctx.beginPath();
+  ctx.arc(center, center, 30, 0, 2*Math.PI);
+  ctx.fillStyle = "#222";
+  ctx.shadowColor = "#000";
+  ctx.shadowBlur = 10;
+  ctx.fill();
+
+  // Pin indicator at top
+  ctx.beginPath();
+  ctx.moveTo(center, 10);
+  ctx.lineTo(center-15, 40);
+  ctx.lineTo(center+15, 40);
+  ctx.closePath();
+  ctx.fillStyle = "#ff0000";
+  ctx.fill();
+
+  // Highlight number under pin (fix)
+  // Pin is at top → angle = -PI/2
+  const pinAngle = -Math.PI / 2;
+  const adjustedAngle = (pinAngle - currentAngle + 2*Math.PI) % (2*Math.PI);
+  const sliceIndex = Math.floor(adjustedAngle / slice);
+  const highlightedNumber = numbers[sliceIndex % numbers.length];
+
+  ctx.fillStyle = "#00ff00";
+  ctx.font = "28px Arial";
+  ctx.fillText(highlightedNumber, center, center+5);
+}
+
+
+// Animate render
+function render() {
+  drawWheel();
+}
+
+// Start wheel
+function startWheel() {
+  targetNumber = parseInt(document.getElementById("stopNumber").value);
+  if (isNaN(targetNumber) || targetNumber <0 || targetNumber>9) { 
+    alert("Enter number 0-9!"); 
+    return; 
+  }
+  spinning = true;
+  socket.emit("startWheel"); // send only start
+}
+
+// Stop wheel manually
+function stopWheel() {
+  if(spinning && targetNumber !== null) {
+    socket.emit("manualStop", { stopNumber: targetNumber });
+  }
+}
+
+// Socket events
+socket.on("statusUpdate", (msg) => {
+  document.getElementById("status").innerText = "Status: " + msg;
+});
+
+// Smooth ease-out rotation
+socket.on("rotate", ({ angle }) => {
+  const diff = angle - currentAngle;
+  currentAngle += diff * 0.2;
+  render();
+});
+
+// Final number exact position
+socket.on("finalNumber", (num) => {
+  const slice = (2*Math.PI)/numbers.length;
+  currentAngle = (7 - num) * slice;
+  spinning = false;
+  render();
+});
+
+// Initial draw
+render();
+</script>
+</body>
+</html>
