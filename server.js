@@ -1,67 +1,92 @@
 // server.js
 const express = require("express");
 const http = require("http");
-const { Server } = require("socket.io");
 const cors = require("cors");
+const WebSocket = require("ws");
 
 const app = express();
-const server = http.createServer(app);
-
-// CORS
-app.use(cors({
-  origin: "http://localhost",
-  methods: ["GET", "POST"]
-}));
-
-const io = new Server(server, {
-  cors: {
-    origin: "http://localhost",
-    methods: ["GET", "POST"]
-  }
-});
-
+app.use(cors());
 app.use(express.static("public"));
 
-// Store current wheel state per socket
-let wheelState = {};
+const server = http.createServer(app);
 
-io.on("connection", (socket) => {
-  console.log("✅ Client connected:", socket.id);
+// 🟢 Create WebSocket Server
+const wss = new WebSocket.Server({ server });
 
-  // Start wheel → only notify spinning
-  socket.on("startWheel", () => {
-    console.log("🎡 Wheel started");
-    wheelState[socket.id] = { spinning: true, stopNumber: null };
-    io.emit("statusUpdate", "Wheel started...");
+// 🌀 Store wheel states (per connection)
+let wheelState = new Map();
+
+wss.on("connection", (ws, req) => {
+  const clientIP = req.socket.remoteAddress;
+  console.log("✅ Client connected:", clientIP);
+
+  // Initialize this client's wheel state
+  wheelState.set(ws, { spinning: false, stopNumber: null, angle: 0 });
+
+  // 🔹 Send a welcome message
+  ws.send(JSON.stringify({ msg: "Connected to Node WebSocket server ✅" }));
+
+  // 🔹 Handle incoming messages
+  ws.on("message", (message) => {
+    try {
+      const data = JSON.parse(message);
+      console.log("📩 Received:", data);
+
+      // 🧩 Handle startWheel
+      if (data.action === "startWheel") {
+        const state = wheelState.get(ws) || {};
+        state.spinning = true;
+        state.stopNumber = null;
+        wheelState.set(ws, state);
+
+        broadcast({ status: "Wheel started..." });
+      }
+
+      // 🧩 Handle manualStop
+      if (data.action === "manualStop" && data.stopNumber != null) {
+        const state = wheelState.get(ws) || {};
+        state.spinning = false;
+        state.stopNumber = data.stopNumber;
+        wheelState.set(ws, state);
+
+        broadcast({ status: "Wheel stopped at " + data.stopNumber });
+        broadcast({ finalNumber: data.stopNumber });
+      }
+
+    } catch (err) {
+      console.error("❌ Invalid JSON:", message.toString());
+    }
   });
 
-  // Manual stop → send final number
-  socket.on("manualStop", ({ stopNumber }) => {
-    console.log("🛑 Manual stop received → Stop at:", stopNumber);
-    wheelState[socket.id].spinning = false;
-    wheelState[socket.id].stopNumber = stopNumber;
-
-    io.emit("statusUpdate", "Wheel stopped at " + stopNumber);
-    io.emit("finalNumber", stopNumber);
-  });
-
-  // Optional: you can emit fake rotation for smooth animation
-  let spinInterval = setInterval(() => {
-    if (wheelState[socket.id] && wheelState[socket.id].spinning) {
-      // simulate rotation angle continuously
-      let angle = (wheelState[socket.id].angle || 0) + 0.3;
-      wheelState[socket.id].angle = angle;
-      io.emit("rotate", { angle });
+  // 🔹 Fake rotation (just for animation)
+  const spinInterval = setInterval(() => {
+    const state = wheelState.get(ws);
+    if (state && state.spinning) {
+      state.angle = (state.angle || 0) + 0.3;
+      wheelState.set(ws, state);
+      broadcast({ rotate: { angle: state.angle } });
     }
   }, 30);
 
-  socket.on("disconnect", () => {
-    console.log("❌ Client disconnected:", socket.id);
+  ws.on("close", () => {
+    console.log("❌ Client disconnected:", clientIP);
     clearInterval(spinInterval);
-    delete wheelState[socket.id];
+    wheelState.delete(ws);
   });
 });
 
-server.listen(3000, () => {
-  console.log("🚀 Server running at http://localhost:3000");
+// 🔹 Broadcast message to all clients
+function broadcast(data) {
+  const json = JSON.stringify(data);
+  wss.clients.forEach((client) => {
+    if (client.readyState === WebSocket.OPEN) {
+      client.send(json);
+    }
+  });
+}
+
+// 🟢 Start the HTTP + WebSocket server
+const PORT = 8080;
+server.listen(PORT, () => {
+  console.log(`🚀 Server running at ws://localhost:${PORT}`);
 });
