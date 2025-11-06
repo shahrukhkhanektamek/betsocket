@@ -86,7 +86,7 @@ function broadcast(data) {
 }
 
 // 🟢 Start the HTTP + WebSocket server
-const PORT = 8080;
+const PORT = 3006;
 server.listen(PORT, () => {
   console.log(`🚀 Server running at ws://localhost:${PORT}`);
 });
