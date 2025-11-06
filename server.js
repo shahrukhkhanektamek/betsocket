@@ -39,7 +39,7 @@ wss.on("connection", (ws, req) => {
         state.stopNumber = null;
         wheelState.set(ws, state);
 
-        broadcast({ sta: 1 });
+        broadcast('s'+data.stopNumber);
       }
 
       // 🧩 Handle manualStop
@@ -49,7 +49,7 @@ wss.on("connection", (ws, req) => {
         state.stopNumber = data.stopNumber;
         wheelState.set(ws, state);
 
-        broadcast({ sta: 0,no: data.stopNumber});
+        broadcast('p');
         // broadcast({ finalNumber: data.stopNumber });
       }
 
@@ -77,7 +77,8 @@ wss.on("connection", (ws, req) => {
 
 // 🔹 Broadcast message to all clients
 function broadcast(data) {
-  const json = JSON.stringify(data);
+  const json = data;
+  // const json = JSON.stringify(data);
   wss.clients.forEach((client) => {
     if (client.readyState === WebSocket.OPEN) {
       client.send(json);
