@@ -39,7 +39,7 @@ wss.on("connection", (ws, req) => {
         state.stopNumber = null;
         wheelState.set(ws, state);
 
-        broadcast({ status: "Wheel started..." });
+        broadcast({ status: 1 });
       }
 
       // 🧩 Handle manualStop
@@ -49,8 +49,8 @@ wss.on("connection", (ws, req) => {
         state.stopNumber = data.stopNumber;
         wheelState.set(ws, state);
 
-        broadcast({ status: "Wheel stopped at " + data.stopNumber });
-        broadcast({ finalNumber: data.stopNumber });
+        broadcast({ status: 2,number: data.stopNumber});
+        // broadcast({ finalNumber: data.stopNumber });
       }
 
     } catch (err) {
