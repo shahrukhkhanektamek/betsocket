@@ -39,7 +39,7 @@ wss.on("connection", (ws, req) => {
         state.stopNumber = null;
         wheelState.set(ws, state);
 
-        broadcast('s'+data.stopNumber);
+        broadcast('s');
       }
 
       // 🧩 Handle manualStop
@@ -49,7 +49,7 @@ wss.on("connection", (ws, req) => {
         state.stopNumber = data.stopNumber;
         wheelState.set(ws, state);
 
-        broadcast('p');
+        broadcast('p'+data.stopNumber);
         // broadcast({ finalNumber: data.stopNumber });
       }
 
