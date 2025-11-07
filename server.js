@@ -40,6 +40,8 @@ wss.on("connection", (ws, req) => {
         wheelState.set(ws, state);
 
         broadcast('s');
+
+        // broadcast({ sta: 1 });
       }
 
       // 🧩 Handle manualStop
@@ -50,8 +52,19 @@ wss.on("connection", (ws, req) => {
         wheelState.set(ws, state);
 
         broadcast('p'+data.stopNumber);
+
+        // broadcast({ sta: 0,no: data.stopNumber});
+
+
         // broadcast({ finalNumber: data.stopNumber });
       }
+
+      // 🧩 Handle startWheel
+      if (data.action === "anytext") {
+        broadcast(data.text);
+      }
+
+
 
     } catch (err) {
       console.error("❌ Invalid JSON:", message.toString());

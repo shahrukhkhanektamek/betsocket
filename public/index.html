@@ -27,7 +27,7 @@
     gap: 10px;
   }
 
-  input[type=number] {
+  input[type=number], input[type=text] {
     padding: 8px 12px;
     font-size: 16px;
     border-radius: 5px;
@@ -71,9 +71,18 @@
 <body>
   <h1>🎡 Smart Wheel</h1>
   <div id="controls">
-    <input type="number" id="stopNumber" placeholder="0-9" min="0" max="9">
-    <button onclick="startWheel()">Start</button>
-    <button onclick="stopWheel()">Stop</button>
+    <div style="width:100%">
+      <input type="text" id="anytext" placeholder="Enter any text.." >
+        <button onclick="sendAnyText()">Send</button>
+    </div>
+  </div>
+
+  <div id="controls">
+    <div style="width:100%">
+        <input type="number" id="stopNumber" placeholder="0-9" min="0" max="9">
+        <button onclick="startWheel()">Start</button>
+        <button onclick="stopWheel()">Stop</button>
+    </div>
   </div>
 
   <canvas id="wheelCanvas" width="400" height="400"></canvas>
@@ -81,7 +90,8 @@
 
 <script>
 /* 🟢 CHANGE THIS to your server IP (same as ESP8266 uses) */
-const ws = new WebSocket("ws:145.223.18.56:3006");
+const ws = new WebSocket("ws:localhost:3006");
+// const ws = new WebSocket("ws:145.223.18.56:3006");
 
 const canvas = document.getElementById("wheelCanvas");
 const ctx = canvas.getContext("2d");
@@ -90,6 +100,7 @@ const numbers = [0,1,2,3,4,5,6,7,8,9];
 let currentAngle = 0;
 let spinning = false;
 let targetNumber = null;
+let anytext = '';
 
 // Draw wheel
 function drawWheel() {
@@ -151,6 +162,12 @@ function drawWheel() {
 
 function render() {
   drawWheel();
+}
+
+// Start
+function sendAnyText() {
+  anytext = document.getElementById("anytext").value;
+  sendMessage({ action: "anytext",text:anytext });
 }
 
 // Start
